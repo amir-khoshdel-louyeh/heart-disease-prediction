@@ -74,6 +74,22 @@ def run_pipeline():
 
     print("✅ Step 2 completed successfully.\n")
     print("==================================================")
+
+    # --------------------------------------------------
+    # STEP 3: Feature Scaling (NEW)
+    # --------------------------------------------------
+    print("Running Step 3: Feature Scaling...")
+    step3_script = os.path.join("src", "feature_scaling.py")
+    result3 = subprocess.run([sys.executable, step3_script])
+
+    if result3.returncode != 0:
+        print("❌ Error occurred in Step 3! Pipeline stopped.")
+        return
+
+    print("✅ Step 3 completed successfully.\n")
+    print("==================================================")
+
+    
     print("🎉 Pipeline executed up to the current ready state!")
     print("==================================================")
 
