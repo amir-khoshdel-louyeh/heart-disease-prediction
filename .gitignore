@@ -70,3 +70,6 @@ venv.bak/
 .idea/
 *.swp
 *.swo
+
+
+data/processed/dataset.csv
