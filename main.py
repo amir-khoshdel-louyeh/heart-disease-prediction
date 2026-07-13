@@ -90,6 +90,20 @@ def run_pipeline():
     print("==================================================")
 
     
+    # --------------------------------------------------
+    # STEP 4: Feature Selection (NEW)
+    # --------------------------------------------------
+    print("Running Step 4: Feature Selection & Correlation Analysis...")
+    step4_script = os.path.join("src", "feature_selection.py")
+    result4 = subprocess.run([sys.executable, step4_script])
+
+    if result4.returncode != 0:
+        print("❌ Error occurred in Step 4! Pipeline stopped.")
+        return
+
+    print("✅ Step 4 completed successfully.\n")
+    print("==================================================")
+    
     print("🎉 Pipeline executed up to the current ready state!")
     print("==================================================")
 
