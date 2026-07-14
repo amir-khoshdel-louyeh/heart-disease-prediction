@@ -104,6 +104,20 @@ def run_pipeline():
     print("✅ Step 4 completed successfully.\n")
     print("==================================================")
     
+    
+    # --------------------------------------------------
+    # STEP 5: Model Training & Evaluation (NEW)
+    # --------------------------------------------------
+    print("Running Step 5: Model Training & Evaluation...")
+    step5_script = os.path.join("src", "model_training.py")
+    result5 = subprocess.run([sys.executable, step5_script])
+
+    if result5.returncode != 0:
+        print("❌ Error occurred in Step 5! Pipeline stopped.")
+        return
+
+    print("✅ Step 5 completed successfully.\n")
+    print("==================================================")
     print("🎉 Pipeline executed up to the current ready state!")
     print("==================================================")
 
