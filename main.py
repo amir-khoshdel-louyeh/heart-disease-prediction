@@ -1,7 +1,15 @@
 import os
+import shutil
 import subprocess
 import sys
-import shutil
+
+
+def wait_for_user(step_name):
+    """این تابع پایپلاین را متوقف می‌کند تا بتوانید خروجی‌ها را به استاد نشان دهید."""
+    print(f"\n🛑 PAUSED before [ {step_name} ]")
+    input("👉 Press [ENTER] to execute this step...")
+    print("-" * 50)
+
 
 def prepare_data_copy():
     """این تابع یک نسخه کپی امن از فایل دیتا ایجاد می‌کند تا دیتای خام دست‌نخورده
@@ -40,8 +48,7 @@ def run_pipeline():
     # --------------------------------------------------
     # STEP 0: Data Backup & Preparation
     # --------------------------------------------------
-    # (shutil must be imported if used here, making sure it's active)
-
+    wait_for_user("STEP 0: Data Backup & Isolation")
     if not prepare_data_copy():
         return
 
@@ -50,6 +57,7 @@ def run_pipeline():
     # --------------------------------------------------
     # STEP 1: Data Cleaning
     # --------------------------------------------------
+    wait_for_user("STEP 1: Data Cleaning (Handling Missing Values)")
     print("Running Step 1: Data Cleaning...")
     step1_script = os.path.join("src", "data_cleaning.py")
     result1 = subprocess.run([sys.executable, step1_script])
@@ -62,8 +70,9 @@ def run_pipeline():
     print("==================================================")
 
     # --------------------------------------------------
-    # STEP 2: Categorical Encoding (NEW)
+    # STEP 2: Categorical Encoding
     # --------------------------------------------------
+    wait_for_user("STEP 2: Categorical Encoding (One-Hot Transformation)")
     print("Running Step 2: Categorical Encoding...")
     step2_script = os.path.join("src", "categorical_encoding.py")
     result2 = subprocess.run([sys.executable, step2_script])
@@ -76,8 +85,9 @@ def run_pipeline():
     print("==================================================")
 
     # --------------------------------------------------
-    # STEP 3: Feature Scaling (NEW)
+    # STEP 3: Feature Scaling
     # --------------------------------------------------
+    wait_for_user("STEP 3: Feature Scaling (Z-Score Standardization)")
     print("Running Step 3: Feature Scaling...")
     step3_script = os.path.join("src", "feature_scaling.py")
     result3 = subprocess.run([sys.executable, step3_script])
@@ -89,10 +99,12 @@ def run_pipeline():
     print("✅ Step 3 completed successfully.\n")
     print("==================================================")
 
-    
     # --------------------------------------------------
-    # STEP 4: Feature Selection (NEW)
+    # STEP 4: Feature Selection
     # --------------------------------------------------
+    wait_for_user(
+        "STEP 4: Feature Selection & Correlation Analysis (Heatmap Generation)"
+    )
     print("Running Step 4: Feature Selection & Correlation Analysis...")
     step4_script = os.path.join("src", "feature_selection.py")
     result4 = subprocess.run([sys.executable, step4_script])
@@ -103,11 +115,11 @@ def run_pipeline():
 
     print("✅ Step 4 completed successfully.\n")
     print("==================================================")
-    
-    
+
     # --------------------------------------------------
-    # STEP 5: Model Training & Evaluation (NEW)
+    # STEP 5: Model Training & Evaluation
     # --------------------------------------------------
+    wait_for_user("STEP 5: Model Training (SVM & Naive Bayes Optimization)")
     print("Running Step 5: Model Training & Evaluation...")
     step5_script = os.path.join("src", "model_training.py")
     result5 = subprocess.run([sys.executable, step5_script])
@@ -120,9 +132,14 @@ def run_pipeline():
     print("==================================================")
 
     # --------------------------------------------------
-    # STEP 6: Final Evaluation & Charts (NEW)
+    # STEP 6: Final Evaluation & Charts
     # --------------------------------------------------
-    print("Running Step 6: Generating Confusion Matrix & ROC Curves on Test Set...")
+    wait_for_user(
+        "STEP 6: Detailed Test Evaluation (Confusion Matrix & ROC Curves)"
+    )
+    print(
+        "Running Step 6: Generating Confusion Matrix & ROC Curves on Test Set..."
+    )
     step6_script = os.path.join("src", "final_evaluation.py")
     result6 = subprocess.run([sys.executable, step6_script])
 
@@ -133,7 +150,6 @@ def run_pipeline():
     print("✅ Step 6 completed successfully.\n")
     print("==================================================")
 
-    
     print("🎉 Pipeline executed up to the current ready state!")
     print("==================================================")
 
