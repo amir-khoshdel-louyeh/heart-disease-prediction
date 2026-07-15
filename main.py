@@ -118,6 +118,22 @@ def run_pipeline():
 
     print("✅ Step 5 completed successfully.\n")
     print("==================================================")
+
+    # --------------------------------------------------
+    # STEP 6: Final Evaluation & Charts (NEW)
+    # --------------------------------------------------
+    print("Running Step 6: Generating Confusion Matrix & ROC Curves on Test Set...")
+    step6_script = os.path.join("src", "final_evaluation.py")
+    result6 = subprocess.run([sys.executable, step6_script])
+
+    if result6.returncode != 0:
+        print("❌ Error occurred in Step 6! Pipeline stopped.")
+        return
+
+    print("✅ Step 6 completed successfully.\n")
+    print("==================================================")
+
+    
     print("🎉 Pipeline executed up to the current ready state!")
     print("==================================================")
 
