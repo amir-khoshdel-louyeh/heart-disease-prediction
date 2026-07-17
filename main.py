@@ -55,9 +55,9 @@ def run_pipeline():
     print("==================================================")
 
     # --------------------------------------------------
-    # STEP 1: Data Cleaning
+    # STEP 1: Data Cleaning & Splitting
     # --------------------------------------------------
-    wait_for_user("STEP 1: Data Cleaning (Handling Missing Values)")
+    wait_for_user("STEP 1: Data Cleaning & Splitting (Handling Missing Values)")
     print("Running Step 1: Data Cleaning...")
     step1_script = os.path.join("src", "data_cleaning.py")
     result1 = subprocess.run([sys.executable, step1_script])
