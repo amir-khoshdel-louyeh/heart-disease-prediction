@@ -3,6 +3,11 @@ import sys
 import numpy as np
 import pandas as pd
 
+# Opt into the future pandas behavior: suppress FutureWarning about silent
+# downcasting in .fillna() / .ffill() / .bfill() on object-dtype arrays.
+# This makes the code forward-compatible with the next major pandas release.
+pd.set_option("future.no_silent_downcasting", True)
+
 
 def load_and_clean_data(processed_file_path):
     print("--- Step 1: Loading and Cleaning Data ---")
