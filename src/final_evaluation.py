@@ -68,7 +68,7 @@ def evaluate_test_set(processed_file_path, models_dir, figures_dir):
     print(f"📊 Confusion Matrices saved to: {cm_output_path}")
 
     # Finalize and Save ROC Curve
-    plt.plot([0, 1], [0, 1], 'k--', linestyle='--') # Diagonal random guess line
+    plt.plot([0, 1], [0, 1], 'k--')  # Diagonal random guess line
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate (1 - Specificity)')
