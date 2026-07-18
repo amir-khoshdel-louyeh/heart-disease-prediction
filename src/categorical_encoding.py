@@ -1,46 +1,55 @@
 import os
 import sys
 import pandas as pd
+from sklearn.preprocessing import OneHotEncoder
 
-
-def encode_categorical_data(processed_file_path):
+def encode_categorical_data(output_dir):
     print("--- Step 2: Categorical Encoding ---")
 
-    # 1. Check if the file exists
-    if not os.path.exists(processed_file_path):
-        raise FileNotFoundError(
-            f"Processed data file not found at {processed_file_path}."
-        )
+    x_train_path = os.path.join(output_dir, "X_train.csv")
+    x_test_path = os.path.join(output_dir, "X_test.csv")
 
-    # 2. Read the current dataset state
-    df = pd.read_csv(processed_file_path)
+    if not os.path.exists(x_train_path) or not os.path.exists(x_test_path):
+        raise FileNotFoundError("Training or Testing splits not found.")
 
-    # 3. Identify categorical columns that are text-based
-    # Based on your data: 'sex', 'cp', 'fbs', 'restecg', 'exang', 'slope', 'ca', 'thal'
-    # We filter only columns that actually contain text/object types to prevent errors
-    categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
+    X_train = pd.read_csv(x_train_path)
+    X_test = pd.read_csv(x_test_path)
 
-    # Ensure 'target' is not treated as a dummy variable if it's text (it shouldn't be)
-    if "target" in categorical_cols:
-        categorical_cols.remove("target")
+    categorical_cols = X_train.select_dtypes(include=["object"]).columns.tolist()
 
     if len(categorical_cols) == 0:
         print("ℹ️ No text-based categorical columns found or already encoded.")
     else:
         print(f"🔤 Encoding columns: {categorical_cols}")
-        # Apply One-Hot Encoding and drop the first category to avoid multicollinearity
-        df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-
-        # Convert True/False boolean outputs from get_dummies into 1 and 0
-        df = df.astype(int, errors="ignore")
+        
+        # We must keep indices aligned after encoding
+        # OneHotEncoder handles unknown categories in the test set
+        encoder = OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False)
+        
+        # Fit ONLY on training data
+        encoder.fit(X_train[categorical_cols])
+        
+        # Transform both
+        encoded_train = encoder.transform(X_train[categorical_cols])
+        encoded_test = encoder.transform(X_test[categorical_cols])
+        
+        # Get feature names
+        new_cols = encoder.get_feature_names_out(categorical_cols)
+        
+        # Replace old columns with new ones
+        X_train_encoded = pd.DataFrame(encoded_train, columns=new_cols, index=X_train.index)
+        X_test_encoded = pd.DataFrame(encoded_test, columns=new_cols, index=X_test.index)
+        
+        X_train = pd.concat([X_train.drop(columns=categorical_cols), X_train_encoded], axis=1)
+        X_test = pd.concat([X_test.drop(columns=categorical_cols), X_test_encoded], axis=1)
 
     print("✅ Categorical encoding completed successfully.")
 
-    # 4. Save and overwrite the same file in data/processed
-    df.to_csv(processed_file_path, index=False)
-    print(f"✨ Safe copy updated with encodings at: {processed_file_path}\n")
-
+    # Save back to disk
+    X_train.to_csv(x_train_path, index=False)
+    X_test.to_csv(x_test_path, index=False)
+    print(f"✨ Splits updated with encodings at: {output_dir}\n")
 
 if __name__ == "__main__":
-    PROCESSED_DATA_PATH = os.path.join("data", "processed", "dataset.csv")
-    encode_categorical_data(PROCESSED_DATA_PATH)
+    OUTPUT_DIR = os.path.join("data", "processed")
+    encode_categorical_data(OUTPUT_DIR)
