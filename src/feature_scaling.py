@@ -3,25 +3,21 @@ import sys
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-
-def scale_numerical_features(processed_file_path):
+def scale_numerical_features(output_dir):
     print("--- Step 3: Feature Scaling ---")
 
-    # 1. Check if the file exists
-    if not os.path.exists(processed_file_path):
-        raise FileNotFoundError(
-            f"Processed data file not found at {processed_file_path}."
-        )
+    x_train_path = os.path.join(output_dir, "X_train.csv")
+    x_test_path = os.path.join(output_dir, "X_test.csv")
 
-    # 2. Read the current dataset state
-    df = pd.read_csv(processed_file_path)
+    if not os.path.exists(x_train_path) or not os.path.exists(x_test_path):
+        raise FileNotFoundError("Training or Testing splits not found.")
 
-    # 3. Define continuous numerical columns that need scaling
+    X_train = pd.read_csv(x_train_path)
+    X_test = pd.read_csv(x_test_path)
+
     # We target columns that have actual continuous physical measurements
     numerical_cols = ["age", "trestbps", "chol", "thalch", "oldpeak"]
-
-    # Filter only columns that actually exist in the dataframe to prevent errors
-    numerical_cols = [col for col in numerical_cols if col in df.columns]
+    numerical_cols = [col for col in numerical_cols if col in X_train.columns]
 
     if len(numerical_cols) == 0:
         print("ℹ️ No numerical columns found for scaling.")
@@ -29,16 +25,20 @@ def scale_numerical_features(processed_file_path):
         print(f"⚖️ Scaling continuous columns: {numerical_cols}")
         scaler = StandardScaler()
 
-        # Apply StandardScaler to the selected columns
-        df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
+        # Fit ONLY on training data
+        scaler.fit(X_train[numerical_cols])
+
+        # Transform both
+        X_train[numerical_cols] = scaler.transform(X_train[numerical_cols])
+        X_test[numerical_cols] = scaler.transform(X_test[numerical_cols])
 
     print("✅ Feature scaling completed successfully.")
 
-    # 4. Save and overwrite the same file in data/processed
-    df.to_csv(processed_file_path, index=False)
-    print(f"✨ Safe copy updated with scaled features at: {processed_file_path}\n")
-
+    # Save back to disk
+    X_train.to_csv(x_train_path, index=False)
+    X_test.to_csv(x_test_path, index=False)
+    print(f"✨ Splits updated with scaled features at: {output_dir}\n")
 
 if __name__ == "__main__":
-    PROCESSED_DATA_PATH = os.path.join("data", "processed", "dataset.csv")
-    scale_numerical_features(PROCESSED_DATA_PATH)
+    OUTPUT_DIR = os.path.join("data", "processed")
+    scale_numerical_features(OUTPUT_DIR)
