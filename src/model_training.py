@@ -2,39 +2,42 @@ import os
 import sys
 import pickle
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score, classification_report
 
-def train_and_evaluate_models(processed_file_path, models_dir):
+def train_and_evaluate_models(output_dir, models_dir):
     print("--- Step 5: Model Training & Evaluation ---")
 
-    # 1. Check if the file exists
-    if not os.path.exists(processed_file_path):
-        raise FileNotFoundError(f"Processed data file not found at {processed_file_path}.")
+    x_train_path = os.path.join(output_dir, "X_train.csv")
+    y_train_path = os.path.join(output_dir, "y_train.csv")
+    x_test_path = os.path.join(output_dir, "X_test.csv")
+    y_test_path = os.path.join(output_dir, "y_test.csv")
 
-    # 2. Read the preprocessed dataset
-    df = pd.read_csv(processed_file_path)
+    if not all(os.path.exists(p) for p in [x_train_path, y_train_path, x_test_path, y_test_path]):
+        raise FileNotFoundError("Processed splits not found.")
 
-    # 3. Split features (X) and target (y)
-    X = df.drop(columns=['target'])
-    y = df['target']
+    X_train = pd.read_csv(x_train_path)
+    y_train = pd.read_csv(y_train_path)
+    X_test = pd.read_csv(x_test_path)
+    y_test = pd.read_csv(y_test_path)
 
-    # Split into 80% Training and 20% Testing data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    # Flatten y correctly
+    y_train = y_train.values.ravel()
+    y_test = y_test.values.ravel()
+
     print(f"📊 Training set size: {X_train.shape[0]} samples")
     print(f"📊 Testing set size: {X_test.shape[0]} samples\n")
 
-    # 4. Initialize Models
+    # Initialize Models
     models = {
-        "Support_Vector_Machine": SVC(kernel='linear', random_state=42),
+        "Support_Vector_Machine": SVC(kernel='linear', random_state=42, probability=True),
         "Naive_Bayes": GaussianNB()
     }
 
     os.makedirs(models_dir, exist_ok=True)
 
-    # 5. Train and Evaluate each model
+    # Train and Evaluate each model
     for model_name, model in models.items():
         print(f"🤖 Training {model_name}...")
         model.fit(X_train, y_train)
@@ -49,7 +52,7 @@ def train_and_evaluate_models(processed_file_path, models_dir):
         print(classification_report(y_test, y_pred))
         print("-" * 40)
 
-        # 6. Save the trained model to the models/ directory for future use
+        # Save the trained model
         model_save_path = os.path.join(models_dir, f"{model_name}.pkl")
         with open(model_save_path, 'wb') as f:
             pickle.dump(model, f)
@@ -58,7 +61,6 @@ def train_and_evaluate_models(processed_file_path, models_dir):
     print("✅ Model training and saving completed successfully.")
 
 if __name__ == "__main__":
-    PROCESSED_DATA_PATH = os.path.join("data", "processed", "dataset.csv")
+    OUTPUT_DIR = os.path.join("data", "processed")
     MODELS_OUTPUT_DIR = os.path.join("models")
-
-    train_and_evaluate_models(PROCESSED_DATA_PATH, MODELS_OUTPUT_DIR)
+    train_and_evaluate_models(OUTPUT_DIR, MODELS_OUTPUT_DIR)
