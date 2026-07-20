@@ -4,22 +4,19 @@ import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 
-def evaluate_test_set(processed_file_path, models_dir, figures_dir):
+def evaluate_test_set(output_dir, models_dir, figures_dir):
     print("--- Step 6: Detailed Evaluation on Test Set (20%) ---")
 
-    # 1. Load the processed dataset to replicate the exact split
-    if not os.path.exists(processed_file_path):
-        raise FileNotFoundError(f"Processed data file not found at {processed_file_path}.")
-    
-    df = pd.read_csv(processed_file_path)
-    X = df.drop(columns=['target'])
-    y = df['target']
+    x_test_path = os.path.join(output_dir, "X_test.csv")
+    y_test_path = os.path.join(output_dir, "y_test.csv")
 
-    # Replicate the exact same 80/20 split used during training (thanks to random_state=42)
-    _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    if not os.path.exists(x_test_path) or not os.path.exists(y_test_path):
+        raise FileNotFoundError("Test splits not found.")
+
+    X_test = pd.read_csv(x_test_path)
+    y_test = pd.read_csv(y_test_path).values.ravel()
 
     models_to_evaluate = ["Support_Vector_Machine", "Naive_Bayes"]
     os.makedirs(figures_dir, exist_ok=True)
@@ -50,7 +47,6 @@ def evaluate_test_set(processed_file_path, models_dir, figures_dir):
         axes_cm[idx].set_ylabel('True Label')
 
         # --- B. ROC CURVE ---
-        # SVM needs decision_function, Naive Bayes uses predict_proba
         if hasattr(model, "predict_proba"):
             y_scores = model.predict_proba(X_test)[:, 1]
         else:
@@ -83,8 +79,7 @@ def evaluate_test_set(processed_file_path, models_dir, figures_dir):
     print("✅ Comprehensive testing evaluation finished.")
 
 if __name__ == "__main__":
-    PROCESSED_DATA_PATH = os.path.join("data", "processed", "dataset.csv")
+    OUTPUT_DIR = os.path.join("data", "processed")
     MODELS_DIR = os.path.join("models")
     FIGURES_DIR = os.path.join("reports", "figures")
-
-    evaluate_test_set(PROCESSED_DATA_PATH, MODELS_DIR, FIGURES_DIR)
+    evaluate_test_set(OUTPUT_DIR, MODELS_DIR, FIGURES_DIR)
