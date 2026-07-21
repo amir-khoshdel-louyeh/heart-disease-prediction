@@ -16,6 +16,7 @@ A machine learning pipeline that predicts heart disease presence using SVM and N
 ## ✨ Highlights
 
 - 🔁 End-to-end ML pipeline with 6 modular, sequential steps
+- 🛡️ **Zero Data Leakage** – Train-test splitting occurs *before* any statistical transformations
 - 🤖 Two classifiers compared: Support Vector Machine & Naive Bayes
 - 📊 Automated confusion matrix and ROC curve generation
 - 🔒 Raw data isolation strategy to ensure reproducible experiments
@@ -58,19 +59,19 @@ This project aims to address these limitations with a clean, step-by-step, verif
 The system consists of 6 sequential, modular pipeline steps:
 
 1. **Data Backup & Isolation** — safe copy of raw data to preserve the original
-2. **Data Cleaning** — missing value imputation using median/mode strategies
+2. **Data Cleaning & Splitting** — splits data (80/20) first to prevent data leakage, then missing value imputation using median/mode strategies strictly fitted on the training split
 3. **Categorical Encoding** — One-Hot Encoding with multicollinearity prevention
 4. **Feature Scaling** — Z-score standardization on continuous numerical features
-5. **Feature Selection** — correlation-based analysis with heatmap visualization
+5. **Feature Selection** — correlation-based analysis on the training set with heatmap visualization
 6. **Model Training & Final Evaluation** — SVM and Naive Bayes training, confusion matrices, and ROC curves
 
 **Workflow:**
 
 ```
-Raw CSV → Data Backup → Cleaning → Encoding → Scaling → Feature Selection → Training → Evaluation Reports
+Raw CSV → Data Backup → Split & Clean → Encoding → Scaling → Feature Selection → Training → Evaluation Reports
 ```
 
-Each step reads from and writes back to `data/processed/dataset.csv`, with the raw file left untouched.
+The pipeline preserves the raw file untouched, saving all cleanly processed train/test splits into `data/processed/`.
 
 ---
 
@@ -98,10 +99,11 @@ Each step reads from and writes back to `data/processed/dataset.csv`, with the r
 
 - Interactive pipeline with pause-before-each-step control for step-by-step demonstration
 - Raw data isolation — original file is never modified; all work happens on a safe copy
+- Prevents **Data Leakage** by executing `train_test_split` prior to statistical transformations (imputation, scaling, feature selection).
 - Median imputation for continuous features and mode imputation for categorical features
 - One-Hot Encoding with `drop_first=True` to prevent multicollinearity
 - Z-score standardization applied only to continuous physical measurements
-- Correlation-based feature selection with configurable threshold (default: 0.05)
+- Correlation-based feature selection with configurable threshold (default: 0.05) calculated exclusively on training data
 - Correlation heatmap saved to `reports/figures/correlation_heatmap.png`
 - Trained model objects serialized to `models/` as `.pkl` files for reuse
 - Side-by-side confusion matrices for both classifiers
@@ -113,10 +115,10 @@ Each step reads from and writes back to `data/processed/dataset.csv`, with the r
 
 | Metric    | SVM (Linear) | Naive Bayes |
 |-----------|:------------:|:-----------:|
-| Accuracy  | ~85%         | ~83%        |
-| Precision | ~84%         | ~82%        |
-| Recall    | ~86%         | ~84%        |
-| F1 Score  | ~85%         | ~83%        |
+| Accuracy  | ~84%         | ~84%        |
+| Precision | ~83%         | ~83%        |
+| Recall    | ~88%         | ~86%        |
+| F1 Score  | ~86%         | ~86%        |
 
 > **Note:** Exact values depend on the dataset version used. Run the pipeline to reproduce results.
 
@@ -135,30 +137,31 @@ main.py  (Pipeline Orchestrator)
     │       └── Copies raw CSV → data/processed/dataset.csv
     │
     ├── Step 1: src/data_cleaning.py
-    │       └── Missing value imputation (median / mode)
+    │       └── Splits into train/test sets, computes median/mode on train, applies to both
+    │       └── Saves: X_train.csv, X_test.csv, y_train.csv, y_test.csv
     │
     ├── Step 2: src/categorical_encoding.py
-    │       └── One-Hot Encoding on object-type columns
+    │       └── Fits One-Hot Encoding on X_train, applies to both
     │
     ├── Step 3: src/feature_scaling.py
-    │       └── StandardScaler on continuous columns
+    │       └── Fits StandardScaler on continuous columns of X_train, applies to both
     │
     ├── Step 4: src/feature_selection.py
-    │       └── Correlation analysis → drops low-correlation features
+    │       └── Correlation analysis on train set → drops low-correlation features from both
     │       └── Saves: reports/figures/correlation_heatmap.png
     │
     ├── Step 5: src/model_training.py
-    │       └── Trains SVM (linear) & Naive Bayes
+    │       └── Trains SVM (linear) & Naive Bayes on fully processed X_train
     │       └── Saves: models/Support_Vector_Machine.pkl, models/Naive_Bayes.pkl
     │
     └── Step 6: src/final_evaluation.py
-            └── Loads saved models → generates confusion matrices & ROC curves
+            └── Evaluates saved models on X_test → generates confusion matrices & ROC curves
             └── Saves: reports/figures/confusion_matrices.png, roc_curve.png
 ```
 
 ### Data Layer
 
-Reads from and overwrites `data/processed/dataset.csv` at each step, with the raw file in `data/raw/` permanently preserved.
+Reads raw data, performs a split, and subsequently each preprocessing script overwrites the split files (`X_train.csv`, `X_test.csv`) in `data/processed/`, preserving the raw file in `data/raw/` perfectly.
 
 ### Model Layer
 
@@ -173,6 +176,7 @@ All figures saved as high-resolution PNG files (300 DPI) to `reports/figures/` f
 ## 🔬 Technical Highlights
 
 - **Modular pipeline design** — each step is an independent, testable Python module in `src/`
+- **Data Leakage Prevention** — strict sequential operation ensures test data never influences training statistics
 - **Raw data isolation** — `shutil.copy2` ensures the raw file is never mutated
 - **Defensive file checks** — every module raises `FileNotFoundError` before processing
 - **Stratified train/test split** — `stratify=y` preserves class distribution in both sets
@@ -183,6 +187,9 @@ All figures saved as high-resolution PNG files (300 DPI) to `reports/figures/` f
 ---
 
 ## 🧠 Engineering Decisions
+
+### Why Splitting First?
+The most critical engineering change to prevent data leakage is performing the `train_test_split` prior to statistical transformations. If we scale features or compute median imputation on the entire dataset upfront, information from the test set "leaks" into the model's training phase, leading to artificially inflated accuracy metrics. By splitting first, our scaling and imputation values are computed strictly on the training distribution.
 
 ### Why SVM with a Linear Kernel?
 
@@ -221,17 +228,17 @@ All figures saved as high-resolution PNG files (300 DPI) to `reports/figures/` f
 
 ## ⚠️ Challenges & Lessons Learned
 
-### Challenge 1: Preserving Raw Data Integrity
+### Challenge 1: Preventing Data Leakage with Step-by-Step Scripts
 
-**Problem:** Running the pipeline multiple times would overwrite and corrupt the original dataset if preprocessing operated directly on the raw file.
+**Problem:** Using a standard `scikit-learn` Pipeline hides the transformed intermediate datasets from disk. We wanted the step-by-step file generation back for academic grading, while remaining mathematically sound.
 
-**Solution:** Introduced Step 0 — a dedicated data backup stage using `shutil.copy2` that creates a safe working copy in `data/processed/` before any transformation begins.
+**Solution:** Shifted the `train_test_split` operation to Step 1. We now generate `X_train.csv` and `X_test.csv` separately. Each subsequent script loads both, calculates its statistics strictly on the train file, applies the transformation to both, and saves them back to disk.
 
 ### Challenge 2: Reproducible Train/Test Split Across Two Scripts
 
 **Problem:** Step 5 (training) and Step 6 (evaluation) are separate scripts. Without coordination, they could use different splits, making the confusion matrix and ROC curve meaningless.
 
-**Solution:** Both scripts use `train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)` with identical parameters, guaranteeing the exact same split is reproduced.
+**Solution:** Both scripts now seamlessly load the explicit `X_test.csv` generated back in Step 1, completely preventing any shuffling issues or needing to perfectly reproduce `train_test_split` calls down the line.
 
 ### Challenge 3: ROC Curve Compatibility Between Classifiers
 
@@ -251,10 +258,10 @@ All figures saved as high-resolution PNG files (300 DPI) to `reports/figures/` f
 
 Through this project I improved my understanding of:
 
+- **Data Leakage** — how seemingly harmless dataset-level operations silently corrupt model generalizability.
 - **ML pipeline design** — how to structure preprocessing into sequential, independent steps
 - **Data integrity** — the importance of never mutating raw data and using safe copies
 - **Classifier evaluation** — how to correctly generate and interpret confusion matrices and ROC/AUC curves
-- **scikit-learn internals** — differences between classifiers in terms of score output methods
 - **Reproducibility** — the critical role of fixed random seeds in ML experiments
 
 ---
@@ -265,7 +272,7 @@ Through this project I improved my understanding of:
 heart-disease-prediction/
 ├── src/
 │   ├── __init__.py
-│   ├── data_cleaning.py          # Step 1: Missing value imputation
+│   ├── data_cleaning.py          # Step 1: Split data, missing value imputation
 │   ├── categorical_encoding.py   # Step 2: One-Hot Encoding
 │   ├── feature_scaling.py        # Step 3: Z-score standardization
 │   ├── feature_selection.py      # Step 4: Correlation analysis & heatmap
@@ -273,7 +280,7 @@ heart-disease-prediction/
 │   └── final_evaluation.py       # Step 6: Confusion matrices & ROC curves
 ├── data/
 │   ├── raw/                      # Original, untouched dataset (dataset.csv)
-│   └── processed/                # Working copy — modified by pipeline steps
+│   └── processed/                # Fully transformed splits (X_train.csv, X_test.csv, etc.)
 ├── models/                       # Saved .pkl model objects
 ├── reports/
 │   └── figures/                  # Output plots (heatmap, confusion matrices, ROC)
@@ -355,9 +362,9 @@ The pipeline will pause before each step, allowing you to review the output befo
 | Step | Script                        | Action                                              |
 |:----:|-------------------------------|-----------------------------------------------------|
 | 0    | `main.py`                     | Copies raw data to `data/processed/`                |
-| 1    | `src/data_cleaning.py`        | Imputes missing values (median/mode)                |
-| 2    | `src/categorical_encoding.py` | Applies One-Hot Encoding                            |
-| 3    | `src/feature_scaling.py`      | Standardizes continuous features                    |
+| 1    | `src/data_cleaning.py`        | Splits data, imputes missing values                 |
+| 2    | `src/categorical_encoding.py` | Applies One-Hot Encoding safely on train/test       |
+| 3    | `src/feature_scaling.py`      | Standardizes continuous features safely             |
 | 4    | `src/feature_selection.py`    | Drops low-correlation features, saves heatmap       |
 | 5    | `src/model_training.py`       | Trains & saves SVM and Naive Bayes                  |
 | 6    | `src/final_evaluation.py`     | Generates confusion matrices & ROC curves           |
@@ -389,17 +396,13 @@ reports/figures/
 
 ## 🗺️ Roadmap
 
+- [x] **Refactor preprocessing to eliminate data leakage**
 - [ ] Add cross-validation (k-fold) for more robust accuracy estimates
 - [ ] Add a Random Forest baseline for additional comparison
 - [ ] Export a full classification report to `reports/` as a CSV
 - [ ] Add a `predict.py` script for single-patient inference using saved models
 - [ ] Add hyperparameter tuning with `GridSearchCV` for SVM kernel and Naive Bayes smoothing
 - [ ] Package as a CLI tool with argument parsing
-- [ ] **Refactor preprocessing with scikit-learn `Pipeline` & `ColumnTransformer`** *(addresses data leakage — see below)*
-
-> **⚠️ Known Limitation — Data Leakage:** In the current implementation, imputation (median/mode) and Z-score standardization are computed on the full dataset *before* the train/test split. This means statistics derived from the test set subtly influence the preprocessing stage — a form of data leakage. While the practical effect is minimal on a dataset of this size, it is not production-grade best practice.
->
-> **Planned fix (next iteration):** Wrap all preprocessing transformers inside a scikit-learn `Pipeline` combined with `ColumnTransformer`. This guarantees that `fit()` is called exclusively on training data, and the fitted transformers are then applied to the test set via `transform()` only — fully isolating the test set and eliminating any leakage.
 
 ---
 
