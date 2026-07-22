@@ -409,14 +409,19 @@ reports/figures/
 
 **Amir Khoshdel Louyeh**
 
-### Interests
+### Connect
 
-- Machine Learning & Predictive Modeling
-- Data Science & Feature Engineering
-- Software Architecture & Clean Code
+* **GitHub:** [github.com/amir-khoshdel-louyeh](https://github.com/amir-khoshdel-louyeh)
+* **LinkedIn:** [linkedin.com/in/amir-khoshdel-louyeh](https://www.linkedin.com/in/amir-khoshdel-louyeh)
 
-### Contact
+---
 
-**GitHub:** [github.com/amir-khoshdel-louyeh](https://github.com/amir-khoshdel-louyeh)
+## ⚠️ Disclaimer
 
-**LinkedIn:** [linkedin.com/in/amir-khoshdel-louyeh](https://linkedin.com/in/amir-khoshdel-louyeh)
+This project is intended for educational and research purposes only. It is not a medical device and should not be used for clinical diagnosis or treatment decisions.
+
+---
+
+## ⚖️ License
+
+This project is open-source and available under the **MIT License**.
