@@ -8,8 +8,7 @@
 
 A machine learning pipeline that predicts heart disease presence using SVM and Naive Bayes classifiers, built on the UCI Heart Disease dataset with full preprocessing and evaluation workflows.
 
-<!-- DEMO GIF / SCREENSHOT -->
-<!-- Add your demo image here -->
+![Demo](assets/Demo.gif)
 
 ---
 
