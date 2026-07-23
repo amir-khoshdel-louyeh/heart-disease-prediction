@@ -76,21 +76,17 @@ The pipeline preserves the raw file untouched, saving all cleanly processed trai
 
 ## 🖥️ Demo
 
-### Pipeline Output
-
-<!-- Add a screenshot of the pipeline terminal output here -->
-
 ### Correlation Heatmap
 
-<!-- Add reports/figures/correlation_heatmap.png here -->
+![Correlation Heatmap](assets/correlation_heatmap.png)
 
 ### Confusion Matrices
 
-<!-- Add reports/figures/confusion_matrices.png here -->
+![Confusion Matrices](assets/confusion_matrices.png)
 
 ### ROC Curve
 
-<!-- Add reports/figures/roc_curve.png here -->
+![ROC Curve](assets/roc_curve.png)
 
 ---
 
