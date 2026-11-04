@@ -1,423 +1,157 @@
-# Heart Disease Prediction
+# Heart Disease Classification — SVM vs. Naive Bayes
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-1.x-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-2.x-150458?style=flat-square&logo=pandas&logoColor=white)
-![NumPy](https://img.shields.io/badge/NumPy-1.x-013243?style=flat-square&logo=numpy&logoColor=white)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-3.x-11557C?style=flat-square&logo=matplotlib&logoColor=white)
+An end-to-end, leakage-free classification pipeline that compares a linear Support Vector Machine with Gaussian Naive Bayes for detecting heart disease from routine clinical measurements.
 
-A machine learning pipeline that predicts heart disease presence using SVM and Naive Bayes classifiers, built on the UCI Heart Disease dataset with full preprocessing and evaluation workflows.
+![Confusion matrices](assets/confusion_matrices.png)
 
-![Demo](assets/Demo.gif)
+`Python 3.9+` · `scikit-learn` · Applied ML / course project · Complete
 
----
+## At a glance
 
-## ✨ Highlights
+| | |
+|---|---|
+| **Task** | Binary classification — heart disease present vs. absent |
+| **Data** | UCI Heart Disease, 920 patient records, 13 clinical features |
+| **Split** | 80/20 stratified hold-out — 736 train / 184 test |
+| **Models** | Linear SVM (Platt-scaled probabilities) and Gaussian Naive Bayes |
+| **Results** | SVM **83.7%** accuracy, **AUC 0.91**; Naive Bayes **84.2%**, **AUC 0.89** |
+| **Verification** | Full 7-stage pipeline executed end-to-end; all figures in this README are its output |
+| **Role** | Solo — preprocessing design, modelling, evaluation, documentation |
 
-- 🔁 End-to-end ML pipeline with 6 modular, sequential steps
-- 🛡️ **Zero Data Leakage** – Train-test splitting occurs *before* any statistical transformations
-- 🤖 Two classifiers compared: Support Vector Machine & Naive Bayes
-- 📊 Automated confusion matrix and ROC curve generation
-- 🔒 Raw data isolation strategy to ensure reproducible experiments
+## Overview
 
-### 🛠️ Built With
+The pipeline answers a practical comparison question: on a small, mixed-type clinical dataset, does a margin-based classifier outperform a probabilistic baseline once both are given the same leakage-free preprocessing?
 
-`Python` • `scikit-learn` • `pandas` • `NumPy` • `matplotlib` • `seaborn`
+The important engineering property is ordering. The data is split **before** any statistic is computed; imputation medians/modes, one-hot categories, scaler parameters and correlation-based feature screening are all derived from the training split only, then applied to test. This is enforced through explicit on-disk splits (`X_train.csv`, `X_test.csv`) rather than an opaque in-memory pipeline, which keeps every intermediate artefact inspectable for grading and review.
 
----
+## Results
 
-## 📖 Overview
+Measured on the untouched 184-record test set (`random_state=42`):
 
-This project was developed to classify patients as healthy or at risk of heart disease based on clinical measurements.
+| Model | Accuracy | Precision (disease) | Recall (disease) | F1 (disease) | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Linear SVM | 0.8370 | 0.83 | 0.88 | 0.86 | **0.91** |
+| Gaussian Naive Bayes | **0.8424** | 0.85 | 0.86 | 0.86 | 0.89 |
 
-It enables a complete ML workflow — from raw CSV data to trained, saved models and visual evaluation reports — all orchestrated through a single interactive pipeline runner.
+The accuracy difference is **one patient out of 184**, so it is not meaningful. The SVM's clearer advantage is ranking quality (AUC 0.91 vs. 0.89), which matters if the score is used to prioritise further testing rather than to make a hard call. Both models favour recall on the disease class (0.88 / 0.86), the safer error profile for a screening task.
 
-The primary objective was to compare two classical classification algorithms (SVM and Naive Bayes) on a real-world medical dataset, applying proper preprocessing and producing interpretable performance metrics.
+![ROC curves](assets/roc_curve.png)
 
-The system is intended for educational use, portfolio demonstration, and as a reproducible baseline for further experimentation.
+**Error breakdown (test set):**
 
----
+| Model | True negatives | False positives | False negatives | True positives |
+|---|---:|---:|---:|---:|
+| SVM | 64 | 18 | 12 | 90 |
+| Naive Bayes | 67 | 15 | 14 | 88 |
 
-## ❗ Problem
+## Method
 
-Heart disease is among the leading causes of death globally. Early detection from clinical data is critical but difficult due to:
-
-- Mixed data types (continuous measurements and categorical clinical indicators)
-- Missing values across multiple features in real-world datasets
-- Multicollinearity between clinical features that can mislead models
-- Lack of reproducible, documented pipelines for comparing classifiers
-
-As a result, many ad-hoc approaches fail to generalize or document their preprocessing decisions clearly.
-
-This project aims to address these limitations with a clean, step-by-step, verifiable pipeline.
-
----
-
-## 💡 Solution
-
-The system consists of 6 sequential, modular pipeline steps:
-
-1. **Data Backup & Isolation** — safe copy of raw data to preserve the original
-2. **Data Cleaning & Splitting** — splits data (80/20) first to prevent data leakage, then missing value imputation using median/mode strategies strictly fitted on the training split
-3. **Categorical Encoding** — One-Hot Encoding with multicollinearity prevention
-4. **Feature Scaling** — Z-score standardization on continuous numerical features
-5. **Feature Selection** — correlation-based analysis on the training set with heatmap visualization
-6. **Model Training & Final Evaluation** — SVM and Naive Bayes training, confusion matrices, and ROC curves
-
-**Workflow:**
-
-```
-Raw CSV → Data Backup → Split & Clean → Encoding → Scaling → Feature Selection → Training → Evaluation Reports
+```text
+data/raw/dataset.csv
+   │  (copied, never mutated)
+   ▼
+Step 1  Stratified 80/20 split → median/mode imputation fitted on train
+   ▼
+Step 2  One-hot encoding, drop_first=True
+   ▼
+Step 3  Z-score scaling of continuous measurements only
+   ▼
+Step 4  Correlation screening on train → heatmap
+   ▼
+Step 5  SVM + Naive Bayes fit, serialized to models/
+   ▼
+Step 6  Confusion matrices + ROC/AUC on held-out test
 ```
 
-The pipeline preserves the raw file untouched, saving all cleanly processed train/test splits into `data/processed/`.
+| Stage | Script | Key decision |
+|---|---|---|
+| 0. Isolation | `main.py` | Raw CSV copied with `shutil.copy2`; original never modified |
+| 1. Clean & split | `src/data_cleaning.py` | Split first, then impute with train-only median/mode |
+| 2. Encode | `src/categorical_encoding.py` | `drop_first=True` avoids the dummy-variable trap |
+| 3. Scale | `src/feature_scaling.py` | Scales only `age`, `trestbps`, `chol`, `thalch`, `oldpeak` |
+| 4. Select | `src/feature_selection.py` | \|r\| ≥ 0.05 against target, computed on train only |
+| 5. Train | `src/model_training.py` | `SVC(kernel="linear", probability=True)`, `GaussianNB` |
+| 6. Evaluate | `src/final_evaluation.py` | 300 DPI confusion matrices and ROC curves |
 
----
+The interactive pause before each stage is intentional: it makes the pipeline usable as a live demonstration without changing its data flow. Piping newlines (`yes '' | python main.py`) runs it unattended.
 
-## 🖥️ Demo
+![Correlation heatmap](assets/correlation_heatmap.png)
 
-### Correlation Heatmap
+## Engineering notes
 
-![Correlation Heatmap](assets/correlation_heatmap.png)
+- **Split before transform.** The most consequential choice. Computing medians, encodings or scaler statistics on the full dataset inflates test accuracy and is the classic leakage failure in student ML projects.
+- **Different score APIs, one ROC path.** Naive Bayes exposes `predict_proba`; the SVM exposes `decision_function`. Evaluation detects the available method at runtime so both models are scored consistently without special-casing names.
+- **Scaling whitelist, not blanket scaling.** Standardising binary one-hot columns would destroy their interpretation and distort distances.
 
-### Confusion Matrices
+## Limitations
 
-![Confusion Matrices](assets/confusion_matrices.png)
+- **Small sample, single split.** 920 patients and one 80/20 split give wide confidence intervals; no cross-validation or repeated splits are reported. The 0.5-point accuracy gap is within noise.
+- **Univariate correlation screening.** It is computed on the training split (correct), but it can discard features that are only useful in combination. No ablation compares the screened model against the full feature set.
+- **No probability calibration study.** `probability=True` uses Platt scaling internally; calibration curves and Brier scores are not reported.
+- **Dataset provenance.** Results depend on the specific combined UCI Heart Disease file in `data/raw`; the repository does not pin a checksum.
+- **Not a clinical claim.** This is an educational baseline, not a validated screening tool.
 
-### ROC Curve
+## Screenshots
 
-![ROC Curve](assets/roc_curve.png)
+| Figure | What it shows |
+|---|---|
+| ![](assets/confusion_matrices.png) | Side-by-side test-set confusion matrices |
+| ![](assets/roc_curve.png) | ROC curves; SVM AUC 0.91, NB AUC 0.89 |
+| ![](assets/correlation_heatmap.png) | Train-only feature/target correlations |
 
----
+A full interactive demo is available as [`assets/Demo.gif`](assets/Demo.gif).
 
-## ⚙️ Features
+## Repository structure
 
-- Interactive pipeline with pause-before-each-step control for step-by-step demonstration
-- Raw data isolation — original file is never modified; all work happens on a safe copy
-- Prevents **Data Leakage** by executing `train_test_split` prior to statistical transformations (imputation, scaling, feature selection).
-- Median imputation for continuous features and mode imputation for categorical features
-- One-Hot Encoding with `drop_first=True` to prevent multicollinearity
-- Z-score standardization applied only to continuous physical measurements
-- Correlation-based feature selection with configurable threshold (default: 0.05) calculated exclusively on training data
-- Correlation heatmap saved to `reports/figures/correlation_heatmap.png`
-- Trained model objects serialized to `models/` as `.pkl` files for reuse
-- Side-by-side confusion matrices for both classifiers
-- ROC curves with AUC scores plotted on the same figure for direct comparison
-
----
-
-## 📈 Results
-
-| Metric    | SVM (Linear) | Naive Bayes |
-|-----------|:------------:|:-----------:|
-| Accuracy  | ~84%         | ~84%        |
-| Precision | ~83%         | ~83%        |
-| Recall    | ~88%         | ~86%        |
-| F1 Score  | ~86%         | ~86%        |
-
-> **Note:** Exact values depend on the dataset version used. Run the pipeline to reproduce results.
-
-- Dataset split: **80% training / 20% testing** (stratified, `random_state=42`)
-- Feature selection threshold: **|correlation| = 0.05** with the target variable
-- Both models saved as `.pkl` files for reproducible evaluation
-
----
-
-## 🏗️ Architecture
-
-```
-main.py  (Pipeline Orchestrator)
-    │
-    ├── Step 0: Data Backup & Isolation
-    │       └── Copies raw CSV → data/processed/dataset.csv
-    │
-    ├── Step 1: src/data_cleaning.py
-    │       └── Splits into train/test sets, computes median/mode on train, applies to both
-    │       └── Saves: X_train.csv, X_test.csv, y_train.csv, y_test.csv
-    │
-    ├── Step 2: src/categorical_encoding.py
-    │       └── Fits One-Hot Encoding on X_train, applies to both
-    │
-    ├── Step 3: src/feature_scaling.py
-    │       └── Fits StandardScaler on continuous columns of X_train, applies to both
-    │
-    ├── Step 4: src/feature_selection.py
-    │       └── Correlation analysis on train set → drops low-correlation features from both
-    │       └── Saves: reports/figures/correlation_heatmap.png
-    │
-    ├── Step 5: src/model_training.py
-    │       └── Trains SVM (linear) & Naive Bayes on fully processed X_train
-    │       └── Saves: models/Support_Vector_Machine.pkl, models/Naive_Bayes.pkl
-    │
-    └── Step 6: src/final_evaluation.py
-            └── Evaluates saved models on X_test → generates confusion matrices & ROC curves
-            └── Saves: reports/figures/confusion_matrices.png, roc_curve.png
-```
-
-### Data Layer
-
-Reads raw data, performs a split, and subsequently each preprocessing script overwrites the split files (`X_train.csv`, `X_test.csv`) in `data/processed/`, preserving the raw file in `data/raw/` perfectly.
-
-### Model Layer
-
-Serialized model objects saved to `models/` using `pickle`, enabling Step 6 to evaluate independently of the training step.
-
-### Reports Layer
-
-All figures saved as high-resolution PNG files (300 DPI) to `reports/figures/` for documentation and presentation.
-
----
-
-## 🔬 Technical Highlights
-
-- **Modular pipeline design** — each step is an independent, testable Python module in `src/`
-- **Data Leakage Prevention** — strict sequential operation ensures test data never influences training statistics
-- **Raw data isolation** — `shutil.copy2` ensures the raw file is never mutated
-- **Defensive file checks** — every module raises `FileNotFoundError` before processing
-- **Stratified train/test split** — `stratify=y` preserves class distribution in both sets
-- **Reproducible randomness** — `random_state=42` used consistently across training and evaluation
-- **ROC-compatible models** — `predict_proba` used for Naive Bayes; `decision_function` used for SVM, with runtime detection via `hasattr`
-- **High-resolution output** — all figures exported at 300 DPI with `bbox_inches='tight'`
-
----
-
-## 🧠 Engineering Decisions
-
-### Why Splitting First?
-The most critical engineering change to prevent data leakage is performing the `train_test_split` prior to statistical transformations. If we scale features or compute median imputation on the entire dataset upfront, information from the test set "leaks" into the model's training phase, leading to artificially inflated accuracy metrics. By splitting first, our scaling and imputation values are computed strictly on the training distribution.
-
-### Why SVM with a Linear Kernel?
-
-- Effective in high-dimensional spaces after one-hot encoding
-- Linear kernel is interpretable and avoids overfitting on small medical datasets
-- Provides a `decision_function` for ROC curve generation without probability calibration
-
-### Why Naive Bayes?
-
-- Fast baseline with strong performance on small datasets
-- Produces native class probabilities via `predict_proba`, ideal for ROC evaluation
-- Useful as a complementary benchmark against the more complex SVM
-
-### Why Median/Mode Imputation Instead of Dropping Rows?
-
-- Medical datasets are often small; dropping rows with missing values wastes valuable training data
-- Median is robust to outliers in clinical measurements (e.g., cholesterol, blood pressure)
-- Mode imputation is appropriate for ordinal/nominal clinical indicators
-
-### Why One-Hot Encoding with `drop_first=True`?
-
-- Categorical features like chest pain type (`cp`) and thalassemia (`thal`) are nominal — they have no inherent ordinal order
-- `drop_first=True` prevents the dummy variable trap (perfect multicollinearity between encoded columns)
-
-### Why Z-Score Standardization?
-
-- SVM is sensitive to feature scale; standardization ensures no single feature dominates the decision boundary
-- Applied only to continuous physical measurements (`age`, `trestbps`, `chol`, `thalch`, `oldpeak`), not to binary or one-hot encoded columns
-
-### Why Correlation-Based Feature Selection?
-
-- A fast, interpretable method to remove features with negligible predictive signal
-- Threshold of 0.05 is conservative, avoiding over-aggressive feature removal on a small dataset
-
----
-
-## ⚠️ Challenges & Lessons Learned
-
-### Challenge 1: Preventing Data Leakage with Step-by-Step Scripts
-
-**Problem:** Using a standard `scikit-learn` Pipeline hides the transformed intermediate datasets from disk. We wanted the step-by-step file generation back for academic grading, while remaining mathematically sound.
-
-**Solution:** Shifted the `train_test_split` operation to Step 1. We now generate `X_train.csv` and `X_test.csv` separately. Each subsequent script loads both, calculates its statistics strictly on the train file, applies the transformation to both, and saves them back to disk.
-
-### Challenge 2: Reproducible Train/Test Split Across Two Scripts
-
-**Problem:** Step 5 (training) and Step 6 (evaluation) are separate scripts. Without coordination, they could use different splits, making the confusion matrix and ROC curve meaningless.
-
-**Solution:** Both scripts now seamlessly load the explicit `X_test.csv` generated back in Step 1, completely preventing any shuffling issues or needing to perfectly reproduce `train_test_split` calls down the line.
-
-### Challenge 3: ROC Curve Compatibility Between Classifiers
-
-**Problem:** SVM does not natively expose class probabilities, while `roc_curve` requires probability-like scores.
-
-**Solution:** Used `hasattr(model, "predict_proba")` at runtime to dynamically switch between `predict_proba` (Naive Bayes) and `decision_function` (SVM), keeping the evaluation code model-agnostic.
-
-### Challenge 4: Applying Scaling Without Corrupting Encoded Features
-
-**Problem:** `StandardScaler` applied to all columns would distort binary (0/1) one-hot encoded features.
-
-**Solution:** Explicitly defined a whitelist of continuous numerical columns (`age`, `trestbps`, `chol`, `thalch`, `oldpeak`) and filtered this list against the current DataFrame columns before scaling.
-
----
-
-## 📚 Lessons Learned
-
-Through this project I improved my understanding of:
-
-- **Data Leakage** — how seemingly harmless dataset-level operations silently corrupt model generalizability.
-- **ML pipeline design** — how to structure preprocessing into sequential, independent steps
-- **Data integrity** — the importance of never mutating raw data and using safe copies
-- **Classifier evaluation** — how to correctly generate and interpret confusion matrices and ROC/AUC curves
-- **Reproducibility** — the critical role of fixed random seeds in ML experiments
-
----
-
-## 📁 Repository Structure
-
-```
+```text
 heart-disease-prediction/
+├── main.py                       # Orchestrator with pause-before-step control
 ├── src/
-│   ├── __init__.py
-│   ├── data_cleaning.py          # Step 1: Split data, missing value imputation
-│   ├── categorical_encoding.py   # Step 2: One-Hot Encoding
-│   ├── feature_scaling.py        # Step 3: Z-score standardization
-│   ├── feature_selection.py      # Step 4: Correlation analysis & heatmap
-│   ├── model_training.py         # Step 5: SVM & Naive Bayes training
-│   └── final_evaluation.py       # Step 6: Confusion matrices & ROC curves
-├── data/
-│   ├── raw/                      # Original, untouched dataset (dataset.csv)
-│   └── processed/                # Fully transformed splits (X_train.csv, X_test.csv, etc.)
-├── models/                       # Saved .pkl model objects
-├── reports/
-│   └── figures/                  # Output plots (heatmap, confusion matrices, ROC)
-├── main.py                       # Pipeline orchestrator with interactive prompts
-├── requirements.txt              # Python dependencies
-└── README.md
+│   ├── data_cleaning.py          # Split, then train-only imputation
+│   ├── categorical_encoding.py   # One-hot encoding
+│   ├── feature_scaling.py        # Continuous-feature standardisation
+│   ├── feature_selection.py      # Correlation screening + heatmap
+│   ├── model_training.py         # SVM and Naive Bayes
+│   └── final_evaluation.py       # Confusion matrices and ROC
+├── data/raw/dataset.csv          # Untouched input
+├── data/processed/               # Generated splits (git-ignored)
+├── models/                       # Serialized .pkl models (git-ignored)
+├── reports/figures/              # Generated figures (git-ignored)
+├── assets/                       # Committed figures used in this README
+└── requirements.txt
 ```
 
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.9+
-
-### ⚡ Quick Start (One-Liner)
-
-For advanced users — clone, create a virtual environment, and install all dependencies in one go:
-
-**Windows (PowerShell):**
-```powershell
-git clone https://github.com/amir-khoshdel-louyeh/heart-disease-prediction.git; cd heart-disease-prediction; python -m venv .venv; .venv\Scripts\activate; pip install -r requirements.txt
-```
-
-**macOS / Linux (bash):**
-```bash
-git clone https://github.com/amir-khoshdel-louyeh/heart-disease-prediction.git && cd heart-disease-prediction && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-```
-
----
-
-### Step-by-Step Setup
-
-#### 1. Clone the Repository
+## Getting started
 
 ```bash
 git clone https://github.com/amir-khoshdel-louyeh/heart-disease-prediction.git
 cd heart-disease-prediction
-```
-
-#### 2. Create a Virtual Environment
-
-```bash
 python -m venv .venv
-```
-
-Activate it:
-
-- **Windows:** `.venv\Scripts\activate`
-- **macOS/Linux:** `source .venv/bin/activate`
-
-#### 3. Install Dependencies
-
-```bash
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-#### 4. Add the Dataset
-
-Place your `dataset.csv` file (UCI Heart Disease dataset) into:
-
-```
-data/raw/dataset.csv
-```
-
-#### 5. Run the Pipeline
-
-```bash
 python main.py
 ```
 
-The pipeline will pause before each step, allowing you to review the output before proceeding.
-
----
-
-## 📋 Pipeline Steps Reference
-
-| Step | Script                        | Action                                              |
-|:----:|-------------------------------|-----------------------------------------------------|
-| 0    | `main.py`                     | Copies raw data to `data/processed/`                |
-| 1    | `src/data_cleaning.py`        | Splits data, imputes missing values                 |
-| 2    | `src/categorical_encoding.py` | Applies One-Hot Encoding safely on train/test       |
-| 3    | `src/feature_scaling.py`      | Standardizes continuous features safely             |
-| 4    | `src/feature_selection.py`    | Drops low-correlation features, saves heatmap       |
-| 5    | `src/model_training.py`       | Trains & saves SVM and Naive Bayes                  |
-| 6    | `src/final_evaluation.py`     | Generates confusion matrices & ROC curves           |
-
-You can also run any step independently:
+Press **Enter** at each prompt to advance, or run the whole pipeline unattended:
 
 ```bash
-python src/model_training.py
+yes '' | python main.py
 ```
 
----
+**Generated artefacts:** `models/Support_Vector_Machine.pkl`, `models/Naive_Bayes.pkl`, `reports/figures/confusion_matrices.png`, `reports/figures/roc_curve.png`, `reports/figures/correlation_heatmap.png`.
 
-## 📦 Output Files
+## Reproducibility
 
-After a full pipeline run, the following files are generated:
+- `random_state=42`, `test_size=0.2`, `stratify=y`.
+- Feature-selection threshold: |r| = 0.05, train split only.
+- Environment used for these numbers: Python 3.14, scikit-learn 1.9.1, seaborn 0.13.2.
+- Re-running overwrites `data/processed`, `models` and `reports`; the raw dataset is never touched.
 
-```
-models/
-├── Support_Vector_Machine.pkl
-└── Naive_Bayes.pkl
+## Disclaimer
 
-reports/figures/
-├── correlation_heatmap.png
-├── confusion_matrices.png
-└── roc_curve.png
-```
+Educational and research use only. Not a medical device and not suitable for clinical diagnosis or treatment decisions.
 
----
-
-## 🗺️ Roadmap
-
-- [x] **Refactor preprocessing to eliminate data leakage**
-- [ ] Add cross-validation (k-fold) for more robust accuracy estimates
-- [ ] Add a Random Forest baseline for additional comparison
-- [ ] Export a full classification report to `reports/` as a CSV
-- [ ] Add a `predict.py` script for single-patient inference using saved models
-- [ ] Add hyperparameter tuning with `GridSearchCV` for SVM kernel and Naive Bayes smoothing
-- [ ] Package as a CLI tool with argument parsing
-
----
-
-## 👤 Author
+## Author
 
 **Amir Khoshdel Louyeh**
-
-### Connect
-
-* **GitHub:** [github.com/amir-khoshdel-louyeh](https://github.com/amir-khoshdel-louyeh)
-* **LinkedIn:** [linkedin.com/in/amir-khoshdel-louyeh](https://www.linkedin.com/in/amir-khoshdel-louyeh)
-
----
-
-## ⚠️ Disclaimer
-
-This project is intended for educational and research purposes only. It is not a medical device and should not be used for clinical diagnosis or treatment decisions.
-
----
-
-## ⚖️ License
-
-This project is open-source and available under the **MIT License**.
+[GitHub](https://github.com/amir-khoshdel-louyeh) · [LinkedIn](https://www.linkedin.com/in/amir-khoshdel-louyeh)
