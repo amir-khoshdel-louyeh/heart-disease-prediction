@@ -91,13 +91,7 @@ The interactive pause before each stage is intentional: it makes the pipeline us
 - **Dataset provenance.** Results depend on the specific combined UCI Heart Disease file in `data/raw`; the repository does not pin a checksum.
 - **Not a clinical claim.** This is an educational baseline, not a validated screening tool.
 
-## Screenshots
-
-| Figure | What it shows |
-|---|---|
-| ![](assets/confusion_matrices.png) | Side-by-side test-set confusion matrices |
-| ![](assets/roc_curve.png) | ROC curves; SVM AUC 0.91, NB AUC 0.89 |
-| ![](assets/correlation_heatmap.png) | Train-only feature/target correlations |
+## Demo
 
 A full interactive demo is available as [`assets/Demo.gif`](assets/Demo.gif).
 
